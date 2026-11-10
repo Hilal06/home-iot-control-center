@@ -1,0 +1,36 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: home-iot-business-engine
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 3000ms
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+iot:
+  rules:
+    pln-limit-watts: 900.0
+    pln-warning-threshold: 860.0
+    gas-ppm-threshold: 300
+    pln-tariff-per-kwh: 1352.0
+  notification:
+    cooldown-seconds: 60
+    telegram:
+      bot-token: ${TELEGRAM_BOT_TOKEN:}
+      chat-id: ${TELEGRAM_CHAT_ID:}
+    discord:
+      webhook-url: ${DISCORD_WEBHOOK_URL:}
+
+
