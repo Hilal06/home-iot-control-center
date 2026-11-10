@@ -105,6 +105,7 @@ Gunakan file `.env.example` sebagai referensi saat melakukan deployment pada nod
 ## 📚 Dokumentasi Lengkap
 
 - [Rancangan Arsitektur Hybrid](docs/architecture/hybrid-overview.md)
+- [Spesifikasi Desentralisasi Slave Nodes & Sensor](docs/architecture/slave-nodes-specification.md)
 - [Rust Edge Ingestion Service](docs/services/rust-edge-ingestion.md)
 - [Spring Boot Business Engine](docs/services/springboot-business-engine.md)
 - [Spesifikasi Kontrak & API Reference](docs/contracts/events-and-apis.md)
@@ -116,3 +117,4 @@ Gunakan file `.env.example` sebagai referensi saat melakukan deployment pada nod
 ## 📄 Lisensi
 
 Proyek ini dilisensikan di bawah lisensi [MIT](LICENSE).
+
