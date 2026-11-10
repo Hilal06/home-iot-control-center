@@ -1,0 +1,82 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: iot_mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+    networks:
+      - iot_public_net
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: iot_timescaledb
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: iot_admin
+      POSTGRES_PASSWORD: iot_secret_password
+      POSTGRES_DB: home_iot_db
+    ports:
+      # Terikat ke localhost agar bisa diakses untuk manajemen DB dari host (DBeaver, psql),
+      # namun tidak terekspos ke LAN eksternal.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iot_admin -d home_iot_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - iot_internal_net
+
+  service_backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: iot_service_backend
+    restart: unless-stopped
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+    environment:
+      - PORT=8080
+      - HOST=0.0.0.0
+      - DATABASE_URL=postgres://iot_admin:iot_secret_password@timescaledb:5432/home_iot_db
+      - MQTT_BROKER_HOST=mosquitto
+      - MQTT_BROKER_PORT=1883
+      - MQTT_CLIENT_ID=home_iot_backend
+      - MQTT_TELEMETRY_TOPIC=home/sensors/telemetry
+      - MQTT_COMMAND_TOPIC=home/actuators/control
+      - ESP_DIRECT_HTTP_URL=http://192.168.100.76
+      - RUST_LOG=home_iot_backend=info,tower_http=debug
+    ports:
+      - "8080:8080"
+    networks:
+      - iot_public_net
+      - iot_internal_net
+
+volumes:
+  timescaledb_data:
+  mosquitto_data:
+  mosquitto_log:
+
+# Dual Network Architecture: Segmentasi Jaringan Publik & Internal
+networks:
+  # Network publik untuk komunikasi MQTT dan API eksternal
+  iot_public_net:
+    name: iot_public_network
+    driver: bridge
+
+  # Network privat terisolasi khusus antara Backend dan Database
+  iot_internal_net:
+    name: iot_internal_network
+    driver: bridge
