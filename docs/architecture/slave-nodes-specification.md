@@ -379,3 +379,47 @@ sequenceDiagram
 | **Garage Node** | Wemos D1 Mini (ESP8266) | **ESP-NOW** | MC-38 Reed, IR Sensor, Relai Pulsa | Pulsa Sesaat 500ms (*No Continuous Latch*), Kapasitor De-bounce 100nF |
 | **Lighting Bank** | Wemos D1 Mini (ESP8266) | **ESP-NOW** | PCF8574T, 8-Ch Relai Board | Sekring 2A Kaca Tiap Grup, Pisahkan Jumper `JD-VCC`, MOV Arcing Guard |
 | **ESP32 Master** | ESP32 DevKit / NodeMCU-32S | **ESP-NOW + WiFi STA** | Layar OLED / LED Status, Buzzer | Catu Daya 5V 2A Stabil, Filter Kapasitor 1000µF, Watchdog Timer Aktif |
+
+---
+
+## 8. Panduan Penguatan Sistem Lapangan (Robustness & Anti-Bloat)
+
+Berikut adalah mitigasi kegagalan teknis nyata di lapangan berdasarkan prinsip **Ponytail** (solusi terkecil dan paling tangguh tanpa menambah pustaka/kode berlebih):
+
+### 8.1. Perangkap Saluran Radio (*WiFi Channel Drift*)
+- **Masalah**: ESP32 Master terhubung ke router WiFi rumah dalam mode STA. Jika router me-reboot dan otomatis berpindah saluran (misal dari Channel 1 ke Channel 6), radio Master ikut berpindah ke Channel 6. Seluruh Slave yang terkunci di Channel 1 akan **seketika putus kontak (deaf/blind)**.
+- **Solusi Praktis**:
+  1. Kunci konfigurasi router WiFi rumah pada saluran statis: **Pilih Channel 6 atau 1 (Static 20 MHz, bukan Auto)**.
+  2. Tambahkan logika *Channel Sweeping* sederhana pada Slave: Jika pengiriman ESP-NOW gagal 5 kali berturut-turut, Slave memindai channel 1 s/d 13 sampai mendapat respon dari Master sebelum kembali ke mode tidur.
+
+### 8.2. Hindari Hardcoding MAC Address Master
+- **Masalah**: Jika papan ESP32 Master rusak akibat lonjakan petir dan diganti papan cadangan baru, MAC address radio berubah. Sangat tidak efisien jika harus men-flash ulang firmware 6 slave node di lapangan.
+- **Solusi Praktis**:
+  - Slave mengirim telemetri periodik ke **Broadcast MAC Address (`FF:FF:FF:FF:FF:FF`)**.
+  - ESP32 Master cukup mendaftarkan peer broadcast satu kali saat inisialisasi. Master dapat menerima paket dari slave mana pun tanpa perlu pairing MAC manual yang kaku.
+
+### 8.3. Meredam Lonjakan Arus RF (*Brownout Reset Guard*)
+- **Masalah**: Pemancar radio ESP menarik arus sesaat (*burst spike*) sebesar 200–350 mA dalam rentang 2 ms saat memancarkan paket ESP-NOW. Jika jalur kabel 5V agak panjang atau adaptor USB berkualitas rendah, tegangan drop seketika di bawah 2.8V memicu *brownout reset* berulang kali.
+- **Solusi Praktis**:
+  - Pasang kapasitor elektrolit **470 µF – 1000 µF / 16V (Low ESR)** paralel dengan kapasitor keramik **100 nF** sedekat mungkin dengan pin `5V/VIN` dan `GND` pada setiap Wemos D1 Mini. Ini menyerap *spike* tanpa perlu mengganti adaptor mahal.
+
+### 8.4. Aturan Pin Bootstrapping Wemos D1 Mini (ESP8266)
+- **Masalah**: ESP8266 memiliki pin kontrol *boot state*:
+  - `D3 (GPIO0)` ditarik LOW $\rightarrow$ ESP masuk flash mode (gagal boot normal).
+  - `D8 (GPIO15)` ditarik HIGH $\rightarrow$ ESP menolak booting.
+  - `D4 (GPIO2)` ditarik LOW $\rightarrow$ ESP gagal boot normal.
+- **Solusi Praktis**:
+  - **Pin Bebas Aman (Safe Pins)** untuk relay/sensor: **`D1 (GPIO5)`**, **`D2 (GPIO4)`**, **`D5 (GPIO14)`**, **`D6 (GPIO12)`**, dan **`D7 (GPIO13)`**.
+  - Jangan menghubungkan relai aktif LOW ke pin D3 atau D4! Gunakan pin aman di atas untuk menjamin node selalu hidup normal setelah mati listrik.
+
+### 8.5. Watchdog Data Usang (*Stale Data Guard*) di Master
+- **Masalah**: Jika salah satu slave kehabisan daya atau rusak, Master tidak boleh terus mempublikasikan data pembacaan terakhir seolah-olah node masih hidup.
+- **Solusi Praktis**:
+  - Master menyimpan timestamp `last_seen_ms[node_id]`.
+  - Jika `(millis() - last_seen_ms[node_id]) > 10000` (tidak ada kabar dalam 10 detik), tandai variabel sensor node tersebut sebagai nilai tidak valid (`null / NaN`) dan ubah status perangkat menjadi `OFFLINE` di dashboard.
+
+### 8.6. Transmisi Beruntun untuk Sinyal Darurat (*Burst Redundancy*)
+- **Masalah**: Transmisi broadcast ESP-NOW tidak memiliki jaminan ACK bawaan dari lapisan MAC.
+- **Solusi Praktis**:
+  - Khusus untuk paket darurat (`MSG_EMERGENCY_ALERT`, misalnya kebocoran gas > 400 PPM), slave memancarkan **3 paket berurutan dengan jeda 20 ms** (*burst redundancy*). Hal ini memastikan sinyal 99.9% tembus ke Master meskipun ada interferensi RF sekilas.
+
