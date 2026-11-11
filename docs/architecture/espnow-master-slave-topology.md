@@ -1,6 +1,6 @@
-# Spesifikasi Desentralisasi Slave Node & Arsitektur ESP-NOW Hub-and-Spoke
+# Arsitektur Topologi ESP-NOW Master-Slave & Spesifikasi Node Embedded
 
-Dokumen ini mendefinisikan arsitektur desentralisasi perangkat keras (*distributed embedded nodes*), di mana **ESP32 Master Node** bertindak sebagai **Central Station & Gateway Hub**, dan seluruh **Slave Nodes** (berbasis **Wemos D1 Mini / ESP8266** dan **ESP32**) berkomunikasi **langsung ke Master menggunakan protokol nirkabel berlatensi rendah: ESP-NOW**.
+Dokumen ini mendefinisikan arsitektur desentralisasi perangkat keras (*distributed embedded nodes*), di mana **ESP32 Master Node** bertindak sebagai **Central Station & Gateway Hub Tunggal**, dan seluruh **Slave Nodes** (berbasis **Wemos D1 Mini / ESP8266** dan **ESP32**) berkomunikasi **langsung ke Master menggunakan protokol nirkabel berlatensi rendah: ESP-NOW**.
 
 ---
 
@@ -422,4 +422,53 @@ Berikut adalah mitigasi kegagalan teknis nyata di lapangan berdasarkan prinsip *
 - **Masalah**: Transmisi broadcast ESP-NOW tidak memiliki jaminan ACK bawaan dari lapisan MAC.
 - **Solusi Praktis**:
   - Khusus untuk paket darurat (`MSG_EMERGENCY_ALERT`, misalnya kebocoran gas > 400 PPM), slave memancarkan **3 paket berurutan dengan jeda 20 ms** (*burst redundancy*). Hal ini memastikan sinyal 99.9% tembus ke Master meskipun ada interferensi RF sekilas.
+
+---
+
+## 9. Penetrasi Tembok & Evaluasi Kebutuhan Multi-Master
+
+Pertanyaan mendasar dalam implementasi rumah tinggal: *Apakah kita perlu membuat lebih dari 1 Master karena sinyal radio terhalang dinding beton/bata?*
+
+### 9.1. Mengapa Cukup 1 Master? (Anti Multi-Master Bloat)
+Membuat arsitektur dengan 2 atau lebih Master adalah contoh *over-engineering* yang tidak perlu (*anti-pattern*):
+1. **Masalah *Split-Brain* & Duplikasi Data**:
+   - Jika Master 1 dan Master 2 sama-sama mendengar paket dari Slave Dapur, kedua master akan mempublikasikan data ganda ke broker MQTT, memicu badai event di Spring Boot dan log history yang berantakan.
+2. **Kekacauan Status Aktuator (*Race Condition*)**:
+   - Saat backend mengirim instruksi `set_lamp`, jika kedua Master mencoba mendispatch ke slave, relay akan ter-toggle dua kali atau mengalami konflik status.
+3. **Kesimpulan**: **Tetap gunakan 1 Master tunggal** sebagai *single source of truth*.
+
+### 9.2. Mengapa Sinyal ESP-NOW Lebih Tembus Dinding Dibanding WiFi Biasa?
+WiFi standar rumah sering putus di balik dinding tebal karena protokol WiFi memaksa negosiasi kecepatan tinggi (54–150 Mbps) dengan paket TCP/IP yang besar.
+Sebaliknya, paket ESP-NOW berukuran sangat kecil (~15 byte) dan dapat dikonfigurasi pada bitrate terendah: **1 Mbps (802.11b DSSS)**.
+- **Sensitivitas Penerima**: Pada 1 Mbps, sensitivitas penerima radio mencapai **-98 dBm** (dibandingkan WiFi standar yang rata-rata hanya -72 dBm).
+- **Penetrasi Fisik**: Daya tembus gelombang 1 Mbps DSSS sanggup menembus **2 hingga 3 lapis dinding bata cor** tanpa *packet drop*.
+
+### 9.3. Tiga Solusi Penguatan Jangkauan Fisik (Tanpa Menambah Master)
+
+1. **Konfigurasi Firmware: Kunci Bitrate ke 1 Mbps (Gratis, 1 Baris Kode)**
+   ```cpp
+   // Mengatur physical rate ESP-NOW ke 1 Mbps DSSS untuk penetrasi dinding maksimum
+   esp_wifi_config_espnow_rate(WIFI_IF_STA, WIFI_PHY_RATE_1M_L);
+   ```
+2. **Upgrade Antena Master: Antena Eksternal Omni 5 dBi (~Rp 25.000)**
+   - Jangan gunakan modul dengan antena PCB trace keramik bawaan (gain hanya ~1.5 dBi) pada Master.
+   - Gunakan board **ESP32-WROOM-32U** (memiliki port antena IPEX/U.FL) dan pasang antena tongkat omnidirectional **5 dBi atau 8 dBi**.
+   - Gain antena tinggi pada Master otomatis meningkatkan daya tangkap (*reception aperture*) dari seluruh slave di seluruh penjuru rumah.
+3. **Tata Letak Fisik Strategis (Area Tengah Rumah)**
+   - Letakkan stasiun Master di area **titik tengah rumah** (misalnya di dinding dekat *void* tangga lantai 1). Area tangga memberikan jalur rambat gelombang alami (*line-of-sight*) ke lantai 2 dan area atap/toren.
+   - **Perhatian Penting**: Jangan memasukkan Master ke dalam kotak panel listrik pelat besi tertutup tanpa mengeluarkan antena ke luar boks. Kotak logam bertindak sebagai sangkar Faraday (*Faraday cage*) yang meredam sinyal hingga 90%.
+
+### 9.4. Skenario Ekstrem: Pola Simple Store-and-Forward (Bukan Multi-Master)
+Hanya jika rumah bertingkat 3–4 dengan cor dak beton sangat tebal dan terdapat titik buta (*dead-zone*):
+
+```mermaid
+graph LR
+    ROOF["Node Atap<br/>(ESP_ROOF_WEATHER)"] -->|"ESP-NOW Sinyal Lemah<br/>(Jarak Jauh)"| STAIR["Node Tangga Lt. 2<br/>(Dumb Repeater Forwarder)"]
+    STAIR -->|"ESP-NOW Re-broadcast<br/>(1 Hop Saja)"| MASTER["ESP32 MASTER TUNGGAL<br/>(Lantai 1)"]
+    MASTER -->|"WiFi STA / MQTT"| BACKEND["Mosquitto & Server"]
+```
+
+- Node perantara (misalnya Node Tangga Lantai 2) cukup diberi 5 baris kode untuk meneruskan paket dari node atap ke Master jika RSSI < -85 dBm.
+- Master tetap **satu-satunya gerbang tunggal** ke MQTT dan backend. Tidak ada kerumitan mesh (*PainlessMesh*), tidak ada alokasi memori berlebih, dan arsitektur tetap bersih dan terpusat.
+
 
