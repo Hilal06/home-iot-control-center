@@ -30,6 +30,12 @@ public class TelemetryRedisConsumer implements MessageListener {
     private final DeviceRegistryService deviceRegistryService;
     private final PlnTokenService plnTokenService;
 
+    // State tracking for important non-lamp actuators
+    private Boolean lastSolarChargerActive = null;
+    private Boolean lastEmergencyAlarm = null;
+    private Boolean lastKitchenBreaker = null;
+    private Boolean lastGarageStatus = null;
+
     private long lastTelemetryMillis = System.currentTimeMillis();
 
     public TelemetryRedisConsumer(ObjectMapper objectMapper,
@@ -58,6 +64,9 @@ public class TelemetryRedisConsumer implements MessageListener {
                 // 1. Evaluate safety rules and dispatch alerts
                 RuleEvaluationResult eval = safetyRuleEngine.evaluate(payload);
                 dispatchSafetyAlerts(payload, eval);
+
+                // 1b. Track important actuator changes (solar, alarm, breaker, garage)
+                dispatchActuatorChangeAlerts(payload);
 
                 // 2. Accumulate energy analytics
                 energyAnalyticsService.accumulate(payload);
@@ -126,6 +135,96 @@ public class TelemetryRedisConsumer implements MessageListener {
                             payload.housePowerWVal(), safetyRuleEngine.getPlnLimitWatts()),
                     AlertEvent.AlertLevel.WARNING
             ));
+        }
+    }
+
+    void dispatchActuatorChangeAlerts(TelemetryPayload payload) {
+        // 1. Solar Charger ON / OFF
+        if (payload.solarChargerActive() != null) {
+            if (lastSolarChargerActive != null && !payload.solarChargerActive().equals(lastSolarChargerActive)) {
+                if (Boolean.TRUE.equals(payload.solarChargerActive())) {
+                    notificationService.dispatch(AlertEvent.of(
+                            "ACTUATOR_SOLAR_ON",
+                            "Panel Surya Dinyalakan",
+                            "⚡ Pengisian daya solar charger (PV Array 2400W) telah DIAKTIFKAN.",
+                            AlertEvent.AlertLevel.INFO
+                    ));
+                } else {
+                    notificationService.dispatch(AlertEvent.of(
+                            "ACTUATOR_SOLAR_OFF",
+                            "Panel Surya Dimatikan",
+                            "⚠️ Pengisian daya solar charger telah DIMATIKAN. Sistem beralih ke daya baterai/PLN.",
+                            AlertEvent.AlertLevel.WARNING
+                    ));
+                }
+            }
+            lastSolarChargerActive = payload.solarChargerActive();
+        }
+
+        // 2. Emergency Alarm ON / OFF
+        if (payload.emergencyAlarm() != null) {
+            if (lastEmergencyAlarm != null && !payload.emergencyAlarm().equals(lastEmergencyAlarm)) {
+                if (Boolean.TRUE.equals(payload.emergencyAlarm())) {
+                    notificationService.dispatch(AlertEvent.of(
+                            "ACTUATOR_ALARM_ON",
+                            "Sirene Alarm Darurat Menyala!",
+                            "🚨 Sirene alarm darurat rumah telah DIAKTIFKAN!",
+                            AlertEvent.AlertLevel.CRITICAL
+                    ));
+                } else {
+                    notificationService.dispatch(AlertEvent.of(
+                            "ACTUATOR_ALARM_OFF",
+                            "Sirene Alarm Dinonaktifkan",
+                            "✅ Sirene alarm darurat rumah telah dimatikan.",
+                            AlertEvent.AlertLevel.INFO
+                    ));
+                }
+            }
+            lastEmergencyAlarm = payload.emergencyAlarm();
+        }
+
+        // 3. Kitchen Breaker ON / OFF
+        if (payload.kitchenBreaker() != null) {
+            if (lastKitchenBreaker != null && !payload.kitchenBreaker().equals(lastKitchenBreaker)) {
+                if (Boolean.TRUE.equals(payload.kitchenBreaker())) {
+                    notificationService.dispatch(AlertEvent.of(
+                            "ACTUATOR_BREAKER_ON",
+                            "Pemutus Arus Dapur Aktif",
+                            "🔌 MCB/Pemutus arus dapur telah dihubungkan kembali (ON).",
+                            AlertEvent.AlertLevel.INFO
+                    ));
+                } else {
+                    notificationService.dispatch(AlertEvent.of(
+                            "ACTUATOR_BREAKER_OFF",
+                            "Pemutus Arus Dapur Dimatikan",
+                            "⚠️ MCB/Pemutus arus dapur (Kitchen Breaker) telah DIMATIKAN / TRIP.",
+                            AlertEvent.AlertLevel.WARNING
+                    ));
+                }
+            }
+            lastKitchenBreaker = payload.kitchenBreaker();
+        }
+
+        // 4. Garage Door OPEN / CLOSED
+        if (payload.garageStatus() != null) {
+            if (lastGarageStatus != null && !payload.garageStatus().equals(lastGarageStatus)) {
+                if (Boolean.TRUE.equals(payload.garageStatus())) {
+                    notificationService.dispatch(AlertEvent.of(
+                            "ACTUATOR_GARAGE_OPEN",
+                            "Pintu Garasi Terbuka",
+                            "🚗 Pintu garasi rumah terdeteksi DIBUKA.",
+                            AlertEvent.AlertLevel.INFO
+                    ));
+                } else {
+                    notificationService.dispatch(AlertEvent.of(
+                            "ACTUATOR_GARAGE_CLOSED",
+                            "Pintu Garasi Tertutup",
+                            "🔒 Pintu garasi rumah telah DITUTUP rapat.",
+                            AlertEvent.AlertLevel.INFO
+                    ));
+                }
+            }
+            lastGarageStatus = payload.garageStatus();
         }
     }
 }

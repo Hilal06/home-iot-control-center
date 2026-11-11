@@ -19,6 +19,7 @@ Layanan Spring Boot bertindak sebagai pusat pemrosesan logika bisnis (*business 
    - Menghitung laju pemakaian rata-rata (*burn-rate*) dan memproyeksikan estimasi sisa hari sebelum listrik padam.
 4. **Distribusi Notifikasi Terpadu (Telegram & Discord)**:
    - Mengirim notifikasi bahaya kritis dan status sistem langsung ke Telegram Bot dan Discord Webhook dengan pembatas frekuensi (*anti-spam cooldown throttling* 60 detik).
+   - Melacak transisi status aktuator utama secara instan: perubahan status Panel Surya (ON/OFF), Sirene Alarm Darurat, Pemutus Arus Dapur (Kitchen Breaker), dan Pintu Garasi (saklar lampu sengaja dikecualikan agar tidak membanjiri channel obrolan).
 5. **Inventaris Perangkat (*Device Registry*)**:
    - Mengelola metadata perangkat (nama alias, ruangan, tipe, status aktif) yang tersimpan secara terpusat pada Redis Hash `iot:registry:devices`.
 6. **Pengelola Profil Rumah (*Scene Engine*)**:

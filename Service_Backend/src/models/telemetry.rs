@@ -46,6 +46,12 @@ pub struct TelemetryPayload {
     #[serde(default)]
     pub garage_status: Option<bool>,
     #[serde(default)]
+    pub kitchen_breaker: Option<bool>,
+    #[serde(default)]
+    pub emergency_alarm: Option<bool>,
+    #[serde(default)]
+    pub emergency_cutoff: Option<bool>,
+    #[serde(default)]
     pub hvac_power: Option<bool>,
     #[serde(default)]
     pub hvac_target_temp: Option<i32>,
