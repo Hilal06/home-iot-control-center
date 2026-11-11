@@ -16,6 +16,8 @@
 brain/
 *.agent
 *.session.json
+*prompts.md
+docs/guides/slave-firmware-prompts.md
 
 # ------------------------------------------------------------------------------
 # 2. ENVIRONMENT VARIABLES & PRIVACY SECRETS

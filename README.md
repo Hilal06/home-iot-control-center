@@ -106,7 +106,6 @@ Gunakan file `.env.example` sebagai referensi saat melakukan deployment pada nod
 
 - [Rancangan Arsitektur Hybrid](docs/architecture/hybrid-overview.md)
 - [Topologi ESP-NOW Master-Slave & Spesifikasi Node](docs/architecture/espnow-master-slave-topology.md)
-- [Kumpulan Prompt Firmware Slave Node (ESP-NOW)](docs/guides/slave-firmware-prompts.md)
 - [Rust Edge Ingestion Service](docs/services/rust-edge-ingestion.md)
 - [Spring Boot Business Engine](docs/services/springboot-business-engine.md)
 - [Spesifikasi Kontrak & API Reference](docs/contracts/events-and-apis.md)
