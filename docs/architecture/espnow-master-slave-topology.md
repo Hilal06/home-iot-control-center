@@ -471,4 +471,12 @@ graph LR
 - Node perantara (misalnya Node Tangga Lantai 2) cukup diberi 5 baris kode untuk meneruskan paket dari node atap ke Master jika RSSI < -85 dBm.
 - Master tetap **satu-satunya gerbang tunggal** ke MQTT dan backend. Tidak ada kerumitan mesh (*PainlessMesh*), tidak ada alokasi memori berlebih, dan arsitektur tetap bersih dan terpusat.
 
+---
+
+## 10. Implementasi Firmware Slave Node
+
+Untuk mengimplementasikan firmware bagi masing-masing Slave Node di atas, panduan dan kumpulan prompt siap pakai untuk asisten AI coding tersedia di:  
+👉 **[Panduan & Kumpulan Prompt Firmware Slave Node](../guides/slave-firmware-prompts.md)**
+
+
 
