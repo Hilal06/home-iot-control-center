@@ -2,7 +2,7 @@ use axum::{
     Router,
     routing::{get, post, put},
 };
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
 use super::{
@@ -20,7 +20,14 @@ use crate::state::AppState;
 
 pub fn create_router(state: AppState) -> Router {
     let cors = CorsLayer::new()
-        .allow_origin(Any)
+        .allow_origin(AllowOrigin::predicate(|origin, _| {
+            let s = origin.to_str().unwrap_or("");
+            s.starts_with("http://localhost")
+                || s.starts_with("http://127.0.0.1")
+                || s.starts_with("http://192.168.")
+                || s.starts_with("http://10.")
+                || s.starts_with("https://localhost")
+        }))
         .allow_methods(Any)
         .allow_headers(Any);
 

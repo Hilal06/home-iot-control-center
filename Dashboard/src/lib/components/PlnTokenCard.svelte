@@ -186,7 +186,7 @@
   .card {
     background-color: var(--bg-card);
     border: 1px solid var(--border-medium);
-    border-radius: 0;
+    border-radius: var(--radius-sm);
     display: flex;
     flex-direction: column;
     font-family: var(--font-mono);
@@ -197,7 +197,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 10px 14px;
-    background-color: var(--bg-card-header);
+    background-color: var(--bg-panel-header);
     border-bottom: 1px solid var(--border-medium);
   }
 
@@ -219,23 +219,6 @@
     color: var(--text-muted);
   }
 
-  .badge {
-    font-size: 10px;
-    font-weight: 700;
-    padding: 3px 8px;
-    border-radius: 0;
-    letter-spacing: 0.05em;
-  }
-  .badge.active {
-    background: rgba(16, 185, 129, 0.15);
-    color: var(--accent-green);
-    border: 1px solid var(--accent-green);
-  }
-  .badge.alert {
-    background: rgba(239, 68, 68, 0.2);
-    color: var(--accent-red);
-    border: 1px solid var(--accent-red);
-  }
   .badge.pulse {
     animation: blink 1s infinite alternate;
   }
@@ -254,8 +237,9 @@
 
   /* Hero Balance */
   .balance-hero {
-    background: rgba(0, 0, 0, 0.25);
-    border: 1px solid var(--border-subtle);
+    background: var(--bg-panel-header);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
     padding: 10px 12px;
     display: flex;
     flex-direction: column;
@@ -337,15 +321,15 @@
   .meter-bar-track {
     width: 100%;
     height: 6px;
-    background: var(--bg-panel);
-    border: 1px solid var(--border-subtle);
-    border-radius: 0;
+    background: var(--bg-hover);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
     overflow: hidden;
   }
 
   .meter-bar-fill {
     height: 100%;
-    border-radius: 0;
+    border-radius: var(--radius-sm);
     transition: width 0.3s ease;
   }
   .fill-amber { background: var(--accent-amber); }
@@ -361,7 +345,7 @@
     padding: 7px;
     background: var(--bg-panel);
     border: 1px solid var(--border-medium);
-    border-radius: 0;
+    border-radius: var(--radius-sm);
     color: var(--accent-amber);
     font-family: var(--font-mono);
     font-size: 11px;
@@ -377,8 +361,9 @@
   }
 
   .recharge-drawer {
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--bg-hover);
     border: 1px dashed var(--border-medium);
+    border-radius: var(--radius-sm);
     padding: 10px;
     display: flex;
     flex-direction: column;
@@ -399,8 +384,8 @@
 
   .pill-btn {
     background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: 0;
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
     color: var(--text-primary);
     font-family: var(--font-mono);
     font-size: 10px;
@@ -423,7 +408,7 @@
     flex: 1;
     background: var(--bg-panel);
     border: 1px solid var(--border-medium);
-    border-radius: 0;
+    border-radius: var(--radius-sm);
     color: var(--text-primary);
     font-family: var(--font-mono);
     font-size: 11px;
@@ -437,9 +422,9 @@
 
   .btn-submit {
     background: var(--accent-amber);
-    color: #000;
+    color: #ffffff;
     border: none;
-    border-radius: 0;
+    border-radius: var(--radius-sm);
     font-family: var(--font-mono);
     font-size: 10px;
     font-weight: 800;

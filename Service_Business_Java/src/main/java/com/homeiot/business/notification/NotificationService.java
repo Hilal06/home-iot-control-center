@@ -80,11 +80,21 @@ public class NotificationService {
         return false;
     }
 
+    private String escapeMarkdown(String input) {
+        if (input == null) return "";
+        return input.replace("_", "\\_")
+                    .replace("*", "\\*")
+                    .replace("[", "\\[")
+                    .replace("`", "\\`");
+    }
+
     private void sendTelegram(AlertEvent event) {
         try {
             String url = "https://api.telegram.org/bot" + telegramBotToken.trim() + "/sendMessage";
+            String safeTitle = escapeMarkdown(event.title());
+            String safeMessage = escapeMarkdown(event.message());
             String text = String.format("🚨 *[%s]* *%s*\n\n%s\n\n⏰ _%s_",
-                    event.level(), event.title(), event.message(), event.timestamp());
+                    event.level(), safeTitle, safeMessage, event.timestamp());
 
             Map<String, Object> body = Map.of(
                     "chat_id", telegramChatId.trim(),

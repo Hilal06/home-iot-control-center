@@ -40,9 +40,9 @@
         <div class="data-row">
           <span class="data-label">Sensor Kebocoran Air:</span>
           <span class="data-val">
-            <span class="badge {telemetry.water_leak ? 'alert' : 'active'}">
-              {telemetry.water_leak ? 'KEBOCORAN TERDETEKSI' : 'KERING / AMAN'}
-            </span>
+            <strong class={telemetry.water_leak ? 'text-alert' : 'text-green'}>
+              {telemetry.water_leak ? 'Terdeteksi Bocor' : 'Kering (Aman)'}
+            </strong>
           </span>
         </div>
       </div>
@@ -125,6 +125,7 @@
   .card {
     background-color: var(--bg-card);
     border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
   }
 
   .card-header {
@@ -169,19 +170,20 @@
   }
 
   .card-offline {
-    border-color: rgba(239, 68, 68, 0.45);
+    border-color: #dc2626;
   }
 
   .offline-warning-box {
-    background-color: rgba(239, 68, 68, 0.12);
-    border: 1px solid rgba(239, 68, 68, 0.4);
+    background-color: #fee2e2;
+    border: 1px solid #fca5a5;
+    border-radius: var(--radius-sm);
     padding: 8px 10px;
     margin-bottom: 6px;
     font-family: var(--font-mono);
   }
 
   .warning-title {
-    color: #f87171;
+    color: #b91c1c;
     font-size: 11px;
     font-weight: 700;
     display: block;
@@ -189,7 +191,7 @@
   }
 
   .warning-desc {
-    color: #fca5a5;
+    color: #991b1b;
     font-size: 10px;
     line-height: 1.35;
     margin: 0;
@@ -200,6 +202,6 @@
   }
 
   .text-alert {
-    color: #f87171;
+    color: #dc2626;
   }
 </style>

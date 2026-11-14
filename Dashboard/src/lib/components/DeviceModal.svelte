@@ -1,8 +1,16 @@
 <script>
+  import { Dialog } from 'bits-ui';
   import { BUTTON_TEMPLATES } from '../deviceStore.js';
+  import Lightbulb from '@lucide/svelte/icons/lightbulb';
+  import Droplets from '@lucide/svelte/icons/droplets';
+  import Flame from '@lucide/svelte/icons/flame';
+  import Zap from '@lucide/svelte/icons/zap';
+  import Fan from '@lucide/svelte/icons/fan';
+  import Activity from '@lucide/svelte/icons/activity';
+  import Cpu from '@lucide/svelte/icons/cpu';
 
   let {
-    isOpen = false,
+    isOpen = $bindable(false),
     mode = 'add', // 'add' | 'edit'
     initialData = null,
     onSave = () => {},
@@ -12,11 +20,24 @@
   let id = $state('');
   let name = $state('');
   let ip_address = $state('');
-  let role = $state('Edge Gateway');
+  let role = $state('Lighting Controller');
   let templateId = $state('LIGHTING_4ZONE');
   let description = $state('');
   let allow_automation_when_locked = $state(true);
   let errorMsg = $state('');
+
+  function getRoleIcon(r = '') {
+    const roleLower = (r || '').toLowerCase();
+    if (roleLower.includes('light')) return Lightbulb;
+    if (roleLower.includes('water') || roleLower.includes('pump')) return Droplets;
+    if (roleLower.includes('gas') || roleLower.includes('hazard') || roleLower.includes('fire')) return Flame;
+    if (roleLower.includes('hvac') || roleLower.includes('climate') || roleLower.includes('fan')) return Fan;
+    if (roleLower.includes('power') || roleLower.includes('solar') || roleLower.includes('relay') || roleLower.includes('inverter')) return Zap;
+    if (roleLower.includes('sensor') || roleLower.includes('telemetry')) return Activity;
+    return Cpu;
+  }
+
+  let RoleIcon = $derived(getRoleIcon(role));
 
   $effect(() => {
     if (isOpen) {
@@ -81,19 +102,33 @@
   }
 </script>
 
-{#if isOpen}
-  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
-  <div class="modal-backdrop" onclick={onClose} onkeydown={(e) => e.key === 'Escape' && onClose()} role="dialog" aria-modal="true" tabindex="-1">
-    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <div class="modal-window" onclick={(e) => e.stopPropagation()} role="document">
-      <div class="panel-header">
-        <h2>{mode === 'add' ? '[+ TAMBAH DEVICE BARU]' : '[EDIT INFORMASI DEVICE]'}</h2>
-        <button onclick={onClose} class="btn-close">[ESC / X]</button>
+<Dialog.Root bind:open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+  <Dialog.Portal>
+    <Dialog.Overlay class="modal-backdrop" />
+    <Dialog.Content class="modal-window">
+      <div class="panel-header modal-header-bar">
+        <div class="modal-title-wrap">
+          <div class="modal-icon-badge">
+            <RoleIcon size={20} />
+          </div>
+          <div>
+            <Dialog.Title class="modal-title">
+              {mode === 'add' ? 'TAMBAH PERANGKAT BARU' : 'EDIT INFORMASI PERANGKAT'}
+            </Dialog.Title>
+            <div class="modal-subtitle">
+              {mode === 'add' ? 'Daftarkan node ESP32 controller baru ke sistem' : `Modifikasi parameter ${id || 'node'}`}
+            </div>
+          </div>
+        </div>
+        <Dialog.Close class="btn-close">TUTUP / ESC</Dialog.Close>
       </div>
+      <Dialog.Description class="sr-only">
+        {mode === 'add' ? 'Formulir pendaftaran node ESP32 baru' : 'Formulir pengaturan informasi node ESP32'}
+      </Dialog.Description>
 
       {#if errorMsg}
         <div class="error-banner">
-          [ERROR]: {errorMsg}
+          PERINGATAN: {errorMsg}
         </div>
       {/if}
 
@@ -184,7 +219,7 @@
               bind:checked={allow_automation_when_locked}
             />
             <label for="dev_allow_auto" class="smart-lock-label">
-              [SMART LOCK]: Izinkan Jadwal Timer, Automasi, & Sensor Darurat saat Terkunci
+              SMART LOCK: Izinkan Jadwal Timer, Automasi, & Sensor Darurat saat Terkunci
             </label>
           </div>
           <div class="form-hint" style="margin-left: 24px;">
@@ -193,27 +228,106 @@
         </div>
 
         <div class="modal-actions">
-          <button type="button" onclick={onClose}>
-            [BATAL]
-          </button>
-          <button type="submit" class="btn-success">
-            {mode === 'add' ? '[+ DAFTARKAN DEVICE]' : '[SIMPAN PERUBAHAN]'}
+          <Dialog.Close class="btn-cancel">
+            BATAL
+          </Dialog.Close>
+          <button type="submit" class="btn-success btn-submit">
+            {mode === 'add' ? '+ DAFTARKAN PERANGKAT' : 'SIMPAN PERUBAHAN'}
           </button>
         </div>
       </form>
-    </div>
-  </div>
-{/if}
+    </Dialog.Content>
+  </Dialog.Portal>
+</Dialog.Root>
 
 <style>
-  .btn-close {
-    padding: 2px 6px;
+  .modal-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-medium);
+  }
+
+  .modal-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .modal-icon-badge {
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bg-hover);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
+    color: var(--accent-amber);
+    flex-shrink: 0;
+  }
+
+  :global(.modal-title) {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent-amber);
+    margin: 0;
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+  }
+
+  .modal-subtitle {
     font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    margin-top: 2px;
+  }
+
+  :global(.btn-cancel) {
+    padding: 8px 16px;
+    font-size: 11px;
+    font-weight: 700;
     background: transparent;
     border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: var(--font-mono);
+  }
+  :global(.btn-cancel:hover) {
+    color: var(--text-primary);
+    border-color: var(--border-heavy);
+  }
+
+  :global(.btn-submit) {
+    padding: 8px 20px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  :global(.sr-only) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  :global(.btn-close) {
+    padding: 4px 10px;
+    font-size: 10px;
+    font-weight: 700;
+    background: transparent;
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
     color: var(--text-secondary);
   }
-  .btn-close:hover {
+  :global(.btn-close:hover) {
     color: var(--text-primary);
     border-color: var(--border-heavy);
   }
@@ -226,6 +340,12 @@
     font-family: var(--font-mono);
     font-size: 11px;
     font-weight: 700;
+  }
+
+  .panel-body {
+    padding: 14px;
+    overflow-y: auto;
+    max-height: calc(90vh - 80px);
   }
 
   .form-row-2 {
@@ -244,8 +364,9 @@
   }
 
   .smart-lock-box {
-    background-color: #151515;
+    background-color: var(--bg-hover);
     border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
     padding: 10px;
     margin-top: 4px;
   }
@@ -260,11 +381,17 @@
     font-family: var(--font-mono);
     font-size: 11px;
     font-weight: 700;
-    color: #4ade80;
+    color: #15803d;
     cursor: pointer;
   }
 
   @media (max-width: 600px) {
+    .panel-body {
+      padding: 14px;
+      overflow-y: auto;
+      max-height: calc(90vh - 80px);
+    }
+
     .form-row-2 {
       grid-template-columns: 1fr;
     }

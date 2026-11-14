@@ -1,8 +1,14 @@
 <script>
   import { onMount } from 'svelte';
   import { fetchTelemetryHistory } from '../api.js';
+  import UPlotChart from './UPlotChart.svelte';
+  import RefreshCw from '@lucide/svelte/icons/refresh-cw';
+  import Activity from '@lucide/svelte/icons/activity';
 
   let { telemetry = {}, activeDeviceId = 'esp32_master', isDeviceOnline = true } = $props();
+
+  // Engine selection: 'uplot' (high-performance canvas) | 'svg' (native)
+  let chartEngine = $state('uplot');
 
   // Selected Channel / Metric Group
   let activeGroup = $state('POWER'); // 'POWER' | 'ENVIRONMENT' | 'GAS_SAFETY' | 'WATER_TANK' | 'NETWORK'
@@ -17,9 +23,9 @@
       id: 'POWER',
       label: 'DAYA & SOLAR',
       metrics: [
-        { key: 'pv_power_watts', name: 'Solar PV Output', color: '#10b981', unit: 'W', decimals: 1 },
-        { key: 'house_power_w', name: 'Beban Rumah', color: '#f59e0b', unit: 'W', decimals: 1 },
-        { key: 'mains_voltage', name: 'Tegangan PLN', color: '#38bdf8', unit: 'V', decimals: 1, scaleDown: false },
+        { key: 'pv_power_watts', name: 'Solar PV Output', color: '#059669', unit: 'W', decimals: 1 },
+        { key: 'house_power_w', name: 'Beban Rumah', color: '#d97706', unit: 'W', decimals: 1 },
+        { key: 'mains_voltage', name: 'Tegangan PLN', color: '#0284c7', unit: 'V', decimals: 1, scaleDown: false },
       ],
       threshold: null
     },
@@ -27,10 +33,10 @@
       id: 'ENVIRONMENT',
       label: 'SUHU & LINGKUNGAN',
       metrics: [
-        { key: 'temp_outdoor_c', name: 'Suhu Luar', color: '#fbbf24', unit: '°C', decimals: 1 },
-        { key: 'rack_temp_c', name: 'Suhu Server Rack', color: '#f87171', unit: '°C', decimals: 1 },
-        { key: 'humidity_pct', name: 'Kelembaban Ambient', color: '#38bdf8', unit: '%', decimals: 0 },
-        { key: 'panel_temp_c', name: 'Suhu Solar Panel', color: '#f59e0b', unit: '°C', decimals: 1 },
+        { key: 'temp_outdoor_c', name: 'Suhu Luar', color: '#d97706', unit: '°C', decimals: 1 },
+        { key: 'rack_temp_c', name: 'Suhu Server Rack', color: '#dc2626', unit: '°C', decimals: 1 },
+        { key: 'humidity_pct', name: 'Kelembaban Ambient', color: '#0284c7', unit: '%', decimals: 0 },
+        { key: 'panel_temp_c', name: 'Suhu Solar Panel', color: '#b45309', unit: '°C', decimals: 1 },
       ],
       threshold: null
     },
@@ -38,7 +44,7 @@
       id: 'GAS_SAFETY',
       label: 'GAS & BAHAYA (MQ)',
       metrics: [
-        { key: 'gas_ppm', name: 'Konsentrasi Gas (LPG/Asap)', color: '#f87171', unit: 'PPM', decimals: 0 },
+        { key: 'gas_ppm', name: 'Konsentrasi Gas (LPG/Asap)', color: '#dc2626', unit: 'PPM', decimals: 0 },
       ],
       threshold: { value: 400, label: 'AMBANG BAHAYA (400 PPM)', color: '#dc2626' }
     },
@@ -46,17 +52,17 @@
       id: 'WATER_TANK',
       label: 'TANGKI AIR & POMPA',
       metrics: [
-        { key: 'water_level_pct', name: 'Level Reservoir', color: '#38bdf8', unit: '%', decimals: 0 },
-        { key: 'ultrasonic_distance_cm', name: 'Jarak Sensor Ultrasonik', color: '#fbbf24', unit: 'cm', decimals: 1 },
+        { key: 'water_level_pct', name: 'Level Reservoir', color: '#0284c7', unit: '%', decimals: 0 },
+        { key: 'ultrasonic_distance_cm', name: 'Jarak Sensor Ultrasonik', color: '#d97706', unit: 'cm', decimals: 1 },
       ],
-      threshold: { value: 100, label: 'OVERFLOW / DIVERT LEVEL (100%)', color: '#0ea5e9' }
+      threshold: { value: 100, label: 'OVERFLOW / DIVERT LEVEL (100%)', color: '#0284c7' }
     },
     NETWORK: {
       id: 'NETWORK',
       label: 'WI-FI & DIAGNOSTIK',
       metrics: [
-        { key: 'rssi_dbm', name: 'Wi-Fi RSSI', color: '#10b981', unit: 'dBm', decimals: 0 },
-        { key: 'ping_gateway_ms', name: 'Latency Ping', color: '#fbbf24', unit: 'ms', decimals: 1 },
+        { key: 'rssi_dbm', name: 'Wi-Fi RSSI', color: '#059669', unit: 'dBm', decimals: 0 },
+        { key: 'ping_gateway_ms', name: 'Latency Ping', color: '#d97706', unit: 'ms', decimals: 1 },
       ],
       threshold: null
     }
@@ -228,6 +234,19 @@
 
   let currentConfig = $derived(GROUPS[activeGroup] || GROUPS.POWER);
 
+  // Formatted data array for uPlot: [ [timestamps_seconds], [series1], [series2], ... ]
+  let uplotData = $derived.by(() => {
+    if (!historyPoints || historyPoints.length === 0) {
+      const now = Math.floor(Date.now() / 1000);
+      return [[now], ...currentConfig.metrics.map(() => [0])];
+    }
+    const timestamps = historyPoints.map((pt) => Math.floor((pt.timestamp || Date.now()) / 1000));
+    const seriesData = currentConfig.metrics.map((m) =>
+      historyPoints.map((pt) => Number(pt[m.key] ?? 0))
+    );
+    return [timestamps, ...seriesData];
+  });
+
   // Compute Min & Max bounds for active group
   let bounds = $derived.by(() => {
     if (historyPoints.length === 0) return { min: 0, max: 100 };
@@ -383,8 +402,8 @@
         <span class="amber-bar"></span>
         <h2>GRAFIK PEMANTAUAN REAL-TIME</h2>
       </div>
-      <span class="live-tag {isDeviceOnline ? '' : 'tag-offline'}">
-        <span class="{isDeviceOnline ? 'dot-pulse' : 'dot-offline'}"></span>
+      <span class="live-tag {isDeviceOnline ? '' : 'tag-offline'} flex-badge">
+        <Activity size={12} />
         {isDeviceOnline ? 'LIVE (1 Hz)' : 'OFFLINE (MATI)'}
       </span>
     </div>
@@ -410,8 +429,9 @@
     </div>
 
     <div class="header-right">
-      <button type="button" class="btn-refresh" onclick={loadHistory} title="Muat ulang riwayat dari database">
-        REFRESH DB
+      <button type="button" class="btn-refresh flex-btn" onclick={loadHistory} title="Muat ulang riwayat dari database">
+        <RefreshCw size={11} />
+        <span>REFRESH DB</span>
       </button>
     </div>
   </div>
@@ -439,14 +459,14 @@
         <div class="split-svg-wrap">
           <svg viewBox="0 0 {SW} {SH}" class="split-svg" role="img" aria-label="Grafik Daya Listrik">
             <!-- Grid Background -->
-            <rect x={SPAD.left} y={SPAD.top} width={SPLOT_W} height={SPLOT_H} fill="#0b0e13" stroke="#1f2633" stroke-width="1" />
+            <rect x={SPAD.left} y={SPAD.top} width={SPLOT_W} height={SPLOT_H} fill="#ffffff" stroke="#e2e8f0" stroke-width="1" />
 
             <!-- Y Ticks -->
             {#each [0, 0.33, 0.66, 1] as frac}
               {@const val = Math.round(powerBounds.max * frac)}
               {@const y = getSplitY(val, powerBounds.min, powerBounds.max)}
-              <line x1={SPAD.left} y1={y} x2={SPAD.left + SPLOT_W} y2={y} stroke="#171d27" stroke-width="1" stroke-dasharray="3,3" />
-              <text x={SPAD.left - 6} y={y + 3} fill="#94a3b8" font-family="monospace" font-size="9" text-anchor="end">{val}</text>
+              <line x1={SPAD.left} y1={y} x2={SPAD.left + SPLOT_W} y2={y} stroke="#f1f5f9" stroke-width="1" stroke-dasharray="3,3" />
+              <text x={SPAD.left - 6} y={y + 3} fill="#64748b" font-family="monospace" font-size="9" text-anchor="end">{val}</text>
             {/each}
 
             <!-- PLN 900W Threshold Dashed Line -->
@@ -458,8 +478,8 @@
             <!-- X Time Ticks -->
             {#each xTicks as tick}
               {@const splitX = getSplitX(tick.index ?? 0, historyPoints.length)}
-              <line x1={splitX} y1={SPAD.top + SPLOT_H} x2={splitX} y2={SPAD.top + SPLOT_H + 4} stroke="#334155" />
-              <text x={splitX} y={SPAD.top + SPLOT_H + 14} fill="#94a3b8" font-family="monospace" font-size="9" text-anchor="middle">{tick.label}</text>
+              <line x1={splitX} y1={SPAD.top + SPLOT_H} x2={splitX} y2={SPAD.top + SPLOT_H + 4} stroke="#cbd5e1" />
+              <text x={splitX} y={SPAD.top + SPLOT_H + 14} fill="#64748b" font-family="monospace" font-size="9" text-anchor="middle">{tick.label}</text>
             {/each}
 
             <!-- Solar Path (Green) -->
@@ -498,20 +518,20 @@
         <div class="split-svg-wrap">
           <svg viewBox="0 0 {SW} {SH}" class="split-svg" role="img" aria-label="Grafik Tangki Air dan Suhu">
             <!-- Grid Background -->
-            <rect x={SPAD.left} y={SPAD.top} width={SPLOT_W} height={SPLOT_H} fill="#0b0e13" stroke="#1f2633" stroke-width="1" />
+            <rect x={SPAD.left} y={SPAD.top} width={SPLOT_W} height={SPLOT_H} fill="#ffffff" stroke="#e2e8f0" stroke-width="1" />
 
             <!-- Y Ticks -->
             {#each [0, 25, 50, 75, 100] as val}
               {@const y = getSplitY(val, envBounds.min, envBounds.max)}
-              <line x1={SPAD.left} y1={y} x2={SPAD.left + SPLOT_W} y2={y} stroke="#171d27" stroke-width="1" stroke-dasharray="3,3" />
-              <text x={SPAD.left - 6} y={y + 3} fill="#94a3b8" font-family="monospace" font-size="9" text-anchor="end">{val}</text>
+              <line x1={SPAD.left} y1={y} x2={SPAD.left + SPLOT_W} y2={y} stroke="#f1f5f9" stroke-width="1" stroke-dasharray="3,3" />
+              <text x={SPAD.left - 6} y={y + 3} fill="#64748b" font-family="monospace" font-size="9" text-anchor="end">{val}</text>
             {/each}
 
             <!-- X Time Ticks -->
             {#each xTicks as tick}
               {@const splitX = getSplitX(tick.index ?? 0, historyPoints.length)}
-              <line x1={splitX} y1={SPAD.top + SPLOT_H} x2={splitX} y2={SPAD.top + SPLOT_H + 4} stroke="#334155" />
-              <text x={splitX} y={SPAD.top + SPLOT_H + 14} fill="#94a3b8" font-family="monospace" font-size="9" text-anchor="middle">{tick.label}</text>
+              <line x1={splitX} y1={SPAD.top + SPLOT_H} x2={splitX} y2={SPAD.top + SPLOT_H + 4} stroke="#cbd5e1" />
+              <text x={splitX} y={SPAD.top + SPLOT_H + 14} fill="#64748b" font-family="monospace" font-size="9" text-anchor="middle">{tick.label}</text>
             {/each}
 
             <!-- Water Level Path (Cyan) -->
@@ -573,8 +593,43 @@
     {/each}
   </div>
 
-  <!-- Responsive SVG Line Chart Canvas -->
-  <div class="chart-canvas-wrap">
+  <!-- Engine Switcher: uPlot (Canvas) vs SVG (Native) -->
+  <div class="engine-control-bar">
+    <div class="engine-left">
+      <span class="engine-tag">RENDER ENGINE:</span>
+      <button
+        type="button"
+        class="engine-btn {chartEngine === 'uplot' ? 'engine-active' : ''}"
+        onclick={() => (chartEngine = 'uplot')}
+        title="uPlot Canvas Engine: high-performance hardware accelerated time-series (<40KB)"
+      >
+        uPlot Canvas (Fast)
+      </button>
+      <button
+        type="button"
+        class="engine-btn {chartEngine === 'svg' ? 'engine-active' : ''}"
+        onclick={() => (chartEngine = 'svg')}
+        title="SVG Native SCADA"
+      >
+        SVG Native
+      </button>
+    </div>
+    <div class="engine-right">
+      <span class="history-count">{historyPoints.length} TITIK HISTORIS</span>
+    </div>
+  </div>
+
+  {#if chartEngine === 'uplot'}
+    <div class="uplot-view-container">
+      <UPlotChart
+        data={uplotData}
+        series={currentConfig.metrics}
+        height={280}
+      />
+    </div>
+  {:else}
+    <!-- Responsive SVG Line Chart Canvas -->
+    <div class="chart-canvas-wrap">
     <svg
       role="application"
       aria-label="Grafik Telemetri Sensor Line Chart"
@@ -607,8 +662,8 @@
         y={PAD.top}
         width={PLOT_W}
         height={PLOT_H}
-        fill="#0d1117"
-        stroke="#21262d"
+        fill="#ffffff"
+        stroke="#e2e8f0"
         stroke-width="1"
       />
 
@@ -619,14 +674,14 @@
           y1={tick.y}
           x2={PAD.left + PLOT_W}
           y2={tick.y}
-          stroke="#1f2937"
+          stroke="#f1f5f9"
           stroke-width="1"
           stroke-dasharray="3,3"
         />
         <text
           x={PAD.left - 8}
           y={tick.y + 4}
-          fill="#9ca3af"
+          fill="#64748b"
           font-family="monospace"
           font-size="10"
           text-anchor="end"
@@ -684,7 +739,7 @@
           {#if i === historyPoints.length - 1 || (hoveredPoint && hoveredPoint.index === i)}
             {@const cx = getX(i, historyPoints.length)}
             {@const cy = getY(pt[m.key] ?? bounds.min)}
-            <rect x={cx - 3} y={cy - 3} width="6" height="6" fill="#0d1117" stroke="{m.color}" stroke-width="1.5" />
+            <rect x={cx - 3} y={cy - 3} width="6" height="6" fill="#ffffff" stroke="{m.color}" stroke-width="1.5" />
           {/if}
         {/each}
       {/each}
@@ -696,13 +751,13 @@
           y1={PAD.top + PLOT_H}
           x2={tick.x}
           y2={PAD.top + PLOT_H + 5}
-          stroke="#4b5563"
+          stroke="#cbd5e1"
           stroke-width="1"
         />
         <text
           x={tick.x}
           y={PAD.top + PLOT_H + 18}
-          fill="#9ca3af"
+          fill="#64748b"
           font-family="monospace"
           font-size="10"
           text-anchor="middle"
@@ -718,7 +773,7 @@
           y1={PAD.top}
           x2={hoveredPoint.x}
           y2={PAD.top + PLOT_H}
-          stroke="#9ca3af"
+          stroke="#94a3b8"
           stroke-width="1"
           stroke-dasharray="4,4"
         />
@@ -750,6 +805,7 @@
       </div>
     {/if}
   </div>
+  {/if}
 
   <!-- Legend Footer -->
   <div class="chart-footer">
@@ -781,6 +837,7 @@
   .telemetry-chart-panel {
     background-color: var(--bg-panel);
     border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
   }
 
   .header-left {
@@ -797,30 +854,17 @@
     font-family: var(--font-mono);
     font-size: 10px;
     font-weight: 700;
-    color: #4ade80;
-    background: #052e16;
-    border: 1px solid #166534;
+    color: #15803d;
+    background: #dcfce7;
+    border: 1px solid #86efac;
+    border-radius: var(--radius-sm);
     padding: 2px 8px;
   }
 
   .live-tag.tag-offline {
-    color: #f87171;
-    background: #450a0a;
-    border-color: #ef4444;
-  }
-
-  .dot-offline {
-    width: 6px;
-    height: 6px;
-    background-color: #ef4444;
-  }
-
-  .dot-pulse {
-    width: 6px;
-    height: 6px;
-    background-color: #4ade80;
-    box-shadow: 0 0 6px #4ade80;
-    animation: pulse 1.5s infinite;
+    color: #b91c1c;
+    background: #fee2e2;
+    border-color: #fca5a5;
   }
 
   @keyframes pulse {
@@ -847,8 +891,9 @@
   }
 
   .split-chart-card {
-    background-color: #0b0e13;
+    background-color: var(--bg-card);
     border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
     display: flex;
     flex-direction: column;
   }
@@ -959,23 +1004,23 @@
   }
 
   .pip-green {
-    background-color: #10b981;
+    background-color: #059669;
   }
 
   .pip-amber {
-    background-color: #fbbf24;
+    background-color: #d97706;
   }
 
   .pip-cyan {
-    background-color: #38bdf8;
+    background-color: #0284c7;
   }
 
   .pip-red {
-    background-color: #f87171;
+    background-color: #dc2626;
   }
 
   .pip-cyan-dash {
-    border-top: 2px dashed #38bdf8;
+    border-top: 2px dashed #0284c7;
     height: 0;
     width: 12px;
   }
@@ -987,15 +1032,74 @@
   }
 
   .tab-btn {
-    background: #181818;
-    color: #9ca3af;
-    border: 1px solid #2d3748;
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
     font-size: 10px;
     padding: 4px 8px;
     cursor: pointer;
     font-family: var(--font-mono);
     font-weight: 600;
     transition: all 0.15s ease;
+  }
+
+  .flex-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .engine-control-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px;
+    background-color: var(--bg-panel-header);
+    border-bottom: 1px solid var(--border-medium);
+    font-family: var(--font-mono);
+  }
+
+  .engine-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .engine-tag {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-secondary);
+  }
+
+  .engine-btn {
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
+    font-size: 10px;
+    padding: 3px 8px;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-weight: 600;
+  }
+  .engine-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-heavy);
+  }
+  .engine-btn.engine-active {
+    background-color: #fffbeb;
+    border-color: var(--accent-amber);
+    color: #d97706;
+  }
+
+  .history-count {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .uplot-view-container {
+    padding: 12px;
   }
 
   .title-with-bar {
@@ -1013,12 +1117,12 @@
   .tab-btn:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
-    border-color: var(--border-medium);
+    border-color: var(--border-heavy);
   }
 
   .tab-btn.tab-active {
-    background: var(--accent-amber-bg);
-    color: var(--text-amber);
+    background: #fffbeb;
+    color: #d97706;
     border-color: var(--accent-amber);
     font-weight: 700;
   }
@@ -1028,6 +1132,7 @@
     padding: 3px 8px;
     background: var(--bg-card);
     border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
     color: var(--text-secondary);
   }
 
@@ -1042,13 +1147,14 @@
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 8px;
     padding: 10px 14px;
-    background: #0f141c;
-    border-bottom: 1px solid #1f2937;
+    background: var(--bg-panel-header);
+    border-bottom: 1px solid var(--border-medium);
   }
 
   .stat-kpi-card {
-    background: #161d27;
-    border: 1px solid #283344;
+    background: var(--bg-card);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
     padding: 8px 10px;
     display: flex;
     flex-direction: column;
@@ -1102,7 +1208,7 @@
     flex-direction: column;
     font-family: var(--font-mono);
     font-size: 9px;
-    color: #9ca3af;
+    color: var(--text-muted);
     text-align: right;
   }
 
@@ -1124,12 +1230,13 @@
   .chart-tooltip {
     position: absolute;
     top: 20px;
-    background: #111827;
-    border: 1px solid #4b5563;
+    background: #ffffff;
+    border: 1px solid var(--border-heavy);
+    border-radius: var(--radius-sm);
     padding: 8px 10px;
     pointer-events: none;
     z-index: 20;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     font-family: var(--font-mono);
     min-width: 160px;
   }
@@ -1138,19 +1245,20 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #374151;
+    border-bottom: 1px solid var(--border-light);
     padding-bottom: 4px;
     margin-bottom: 6px;
     font-size: 10px;
-    color: #e5e7eb;
+    color: var(--text-primary);
     font-weight: 700;
   }
 
   .tooltip-tag {
     font-size: 8px;
-    background: #1f2937;
+    background: var(--bg-hover);
     padding: 1px 4px;
-    color: #9ca3af;
+    color: var(--text-muted);
+    border-radius: var(--radius-sm);
   }
 
   .tooltip-body {
@@ -1173,7 +1281,7 @@
   }
 
   .tooltip-row .lbl {
-    color: #9ca3af;
+    color: var(--text-secondary);
     flex: 1;
   }
 
@@ -1185,10 +1293,11 @@
     flex-wrap: wrap;
     gap: 12px;
     padding: 8px 14px;
-    background: #0d1117;
-    border-top: 1px solid #1f2937;
+    background: var(--bg-panel-header);
+    border-top: 1px solid var(--border-medium);
     font-family: var(--font-mono);
     font-size: 10px;
+    color: var(--text-secondary);
   }
 
   .legend-items {
@@ -1201,7 +1310,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    color: #d1d5db;
+    color: var(--text-secondary);
   }
 
   .legend-line {
@@ -1220,7 +1329,7 @@
   .chart-meta {
     display: flex;
     gap: 12px;
-    color: #9ca3af;
+    color: var(--text-muted);
   }
 
   @media (max-width: 768px) {

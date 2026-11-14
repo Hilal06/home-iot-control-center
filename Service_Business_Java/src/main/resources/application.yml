@@ -8,18 +8,21 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
       timeout: 3000ms
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info
   endpoint:
     health:
-      show-details: always
+      show-details: never
 
 iot:
+  security:
+    admin-key: ${IOT_ADMIN_KEY:iot_admin_secret_key_2026}
   rules:
     pln-limit-watts: 900.0
     pln-warning-threshold: 860.0
@@ -32,5 +35,3 @@ iot:
       chat-id: ${TELEGRAM_CHAT_ID:}
     discord:
       webhook-url: ${DISCORD_WEBHOOK_URL:}
-
-

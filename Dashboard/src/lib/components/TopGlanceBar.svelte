@@ -1,4 +1,12 @@
 <script>
+  import Zap from '@lucide/svelte/icons/zap';
+  import Sun from '@lucide/svelte/icons/sun';
+  import BatteryCharging from '@lucide/svelte/icons/battery-charging';
+  import Battery from '@lucide/svelte/icons/battery';
+  import Clock from '@lucide/svelte/icons/clock';
+  import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
+  import CheckCircle2 from '@lucide/svelte/icons/check-circle-2';
+
   let {
     telemetry = {},
     device = {},
@@ -32,7 +40,10 @@
   <!-- 1. PLN 900W Meter Bar -->
   <div class="glance-item pln-item">
     <div class="item-header">
-      <span class="item-title">LISTRIK PLN (MAKS 900W)</span>
+      <span class="item-title flex-title">
+        <span class="icon-accent"><Zap size={13} /></span>
+        LISTRIK PLN (MAKS 900W)
+      </span>
       <span class="item-val">
         <strong>{houseWatts.toFixed(0)}</strong> / {plnLimitWatts} W
         <span class="sub-val">({plnPct.toFixed(0)}%)</span>
@@ -52,7 +63,10 @@
   <!-- 2. Solar Panel 2400Wp (12.6m2) Meter Bar -->
   <div class="glance-item solar-item">
     <div class="item-header">
-      <span class="item-title">PANEL SURYA (2400Wp)</span>
+      <span class="item-title flex-title">
+        <span class="text-green"><Sun size={13} /></span>
+        PANEL SURYA (2400Wp)
+      </span>
       <span class="item-val text-green">
         <strong>{solarWatts.toFixed(0)}</strong> W
         <span class="sub-val">({solarPct.toFixed(0)}%)</span>
@@ -69,7 +83,16 @@
   <!-- 3. Battery Storage Status -->
   <div class="glance-item battery-item">
     <div class="item-header">
-      <span class="item-title">BATERAI RUMAH (4.8 kWh)</span>
+      <span class="item-title flex-title">
+        <span class="text-amber">
+          {#if isSolarSurplus}
+            <BatteryCharging size={13} />
+          {:else}
+            <Battery size={13} />
+          {/if}
+        </span>
+        BATERAI RUMAH (4.8 kWh)
+      </span>
       <span class="item-val text-amber">
         <strong>{batteryPct.toFixed(0)}%</strong>
       </span>
@@ -87,15 +110,25 @@
 
   <!-- 4. Clock & Node Mini Status -->
   <div class="glance-meta">
-    <div class="time-display">{timeString}</div>
+    <div class="time-display flex-badge">
+      <Clock size={12} />
+      <span>{timeString}</span>
+    </div>
     <div class="node-badge">
       {#if !isDeviceOnline}
-        <span class="badge alert">
-          ● PERANGKAT OFFLINE
+        <span class="badge alert flex-badge">
+          <AlertTriangle size={11} />
+          PERANGKAT OFFLINE
         </span>
       {:else}
-        <span class="badge {device.is_locked ? 'warning' : 'active'}">
-          {device.is_locked ? 'PERANGKAT TERKUNCI' : 'PERANGKAT ONLINE'}
+        <span class="badge {device.is_locked ? 'warning' : 'active'} flex-badge">
+          {#if device.is_locked}
+            <AlertTriangle size={11} />
+            PERANGKAT TERKUNCI
+          {:else}
+            <CheckCircle2 size={11} />
+            PERANGKAT ONLINE
+          {/if}
         </span>
       {/if}
     </div>
@@ -108,8 +141,9 @@
     grid-template-columns: 1fr 1fr 1fr auto;
     gap: 12px;
     background-color: var(--bg-panel);
-    border: 1px solid var(--border-medium);
-    padding: 10px 14px;
+    border: none;
+    border-bottom: 1px solid var(--border-medium);
+    padding: 10px 16px;
     align-items: center;
     font-family: var(--font-mono);
   }
@@ -118,9 +152,29 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    background-color: var(--bg-card);
-    border: 1px solid var(--border-light);
-    padding: 8px 10px;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+  }
+
+  .flex-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .flex-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+
+  .icon-accent {
+    color: var(--accent-amber);
+    display: inline-flex;
+    align-items: center;
   }
 
   .item-header {
@@ -161,9 +215,10 @@
 
   .meter-track {
     width: 100%;
-    height: 5px;
-    background-color: #080a0e;
-    border: 1px solid var(--border-light);
+    height: 6px;
+    background-color: var(--bg-hover);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
     overflow: hidden;
   }
 

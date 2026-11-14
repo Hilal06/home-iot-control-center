@@ -98,15 +98,15 @@
           <span class="data-val"><strong>{telemetry.mains_voltage?.toFixed(1) ?? '--'}</strong> V</span>
         </div>
         <div class="data-row">
-          <span class="data-label">Frekuensi Listrik:</span>
-          <span class="data-val"><strong>50.0</strong> Hz</span>
-        </div>
-        <div class="data-row">
-          <span class="data-label">Status Saklar Dapur:</span>
+          <span class="data-label">Saklar MCB Dapur:</span>
           <span class="data-val">
-            <span class="badge {telemetry.kitchen_breaker ? 'active' : 'alert'}">
-              {telemetry.kitchen_breaker ? 'MENYALA' : 'MATI'}
-            </span>
+            <button
+              type="button"
+              class="btn-sm {telemetry.kitchen_breaker ? 'btn-danger' : 'btn-success'}"
+              onclick={() => onCommand({ command: 'set_breaker', state: !telemetry.kitchen_breaker })}
+            >
+              {telemetry.kitchen_breaker ? 'TRIP (MATIKAN)' : 'HUBUNGKAN'}
+            </button>
           </span>
         </div>
         <div class="meter-bar-wrapper">
@@ -142,10 +142,6 @@
         <div class="data-row">
           <span class="data-label">Estimasi Ketahanan:</span>
           <span class="data-val">~10 - 14 Jam</span>
-        </div>
-        <div class="data-row">
-          <span class="data-label">Suhu Ruang Inverter:</span>
-          <span class="data-val"><strong>{telemetry.rack_temp_c?.toFixed(1) ?? '--'}</strong> °C</span>
         </div>
         <div class="data-row">
           <span class="data-label">Status Pengisian:</span>
@@ -185,6 +181,7 @@
   .card {
     background-color: var(--bg-card);
     border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
   }
 
   .card-header {
@@ -298,14 +295,16 @@
 
   .meter-bar-track {
     width: 100%;
-    height: 4px;
-    background-color: #080a0e;
-    border: 1px solid var(--border-light);
+    height: 6px;
+    background-color: var(--bg-hover);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
   }
 
   .meter-bar-fill {
     height: 100%;
     background-color: var(--pln-cyan);
+    border-radius: var(--radius-sm);
   }
 
   .meter-bar-fill.fill-battery {

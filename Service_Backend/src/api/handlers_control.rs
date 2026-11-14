@@ -1,7 +1,7 @@
 use axum::{
     Json,
     extract::{Path, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
 };
 use rumqttc::QoS;
 use serde_json::json;
@@ -15,9 +15,24 @@ use crate::{
 
 pub async fn control_device_handler(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path(device_id): Path<String>,
     Json(payload): Json<ControlCommandPayload>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    // 0. Validate device_id format to prevent MQTT topic path traversal or wildcard injection
+    if !device_id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-') {
+        return Err((StatusCode::BAD_REQUEST, "Invalid device_id format".into()));
+    }
+
+    // Verify whether request carries trusted internal service token or admin authorization
+    let expected_key = std::env::var("IOT_ADMIN_KEY").unwrap_or_else(|_| "iot_admin_secret_key_2026".to_string());
+    let internal_auth = headers
+        .get("x-internal-token")
+        .or_else(|| headers.get("x-admin-key"))
+        .and_then(|v| v.to_str().ok())
+        .map(|token| token == expected_key)
+        .unwrap_or(false);
+
     // 1. Check Smart Lock status on target device
     let device_opt = get_device_by_id(&state.db, &device_id)
         .await
@@ -25,15 +40,16 @@ pub async fn control_device_handler(
 
     if let Some(dev) = device_opt {
         if dev.is_locked {
-            let is_automated = matches!(
+            // Untrusted external HTTP callers cannot bypass lock by forging source=AUTOMATION or force=true
+            let is_automated = internal_auth && matches!(
                 payload.source.to_uppercase().as_str(),
                 "SCHEDULE" | "AUTOMATION" | "DEVICE_TRIGGER" | "EMERGENCY"
             );
 
-            if !is_automated && !payload.force {
+            if !is_automated && !(internal_auth && payload.force) {
                 return Err((
                     StatusCode::LOCKED,
-                    format!("Device '{}' is LOCKED. Manual commands rejected.", dev.name),
+                    format!("Device '{}' is LOCKED. Manual/unauthorized commands rejected.", dev.name),
                 ));
             }
         }
@@ -44,10 +60,16 @@ pub async fn control_device_handler(
         return Err((StatusCode::BAD_REQUEST, format!("Invalid command: {}", err)));
     }
 
+    let verified_source = if internal_auth {
+        payload.source
+    } else {
+        "MANUAL".to_string()
+    };
+
     let mut mqtt_json = payload.command.to_mqtt_payload();
     if let Some(obj) = mqtt_json.as_object_mut() {
         obj.insert("device_id".to_string(), json!(device_id));
-        obj.insert("source".to_string(), json!(payload.source));
+        obj.insert("source".to_string(), json!(verified_source));
     }
 
     let command_name = mqtt_json
@@ -64,7 +86,7 @@ pub async fn control_device_handler(
 
     info!(
         "Received control command '{}' for device '{}' [Source: {}]",
-        command_name, device_id, payload.source
+        command_name, device_id, verified_source
     );
 
     // 3. Determine topic routing
@@ -114,7 +136,7 @@ pub async fn control_device_handler(
         &command_name,
         target.as_deref(),
         &mqtt_json,
-        if is_success { &payload.source } else { "FAILED" },
+        if is_success { &verified_source } else { "FAILED" },
         is_success,
     ).await;
 
@@ -124,7 +146,7 @@ pub async fn control_device_handler(
             "channel": channel,
             "device_id": device_id,
             "command": command_name,
-            "source": payload.source,
+            "source": verified_source,
             "payload": mqtt_json
         });
         if let Some(r) = device_response {

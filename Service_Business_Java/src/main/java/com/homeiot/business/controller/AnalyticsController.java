@@ -5,6 +5,8 @@ import com.homeiot.business.domain.EnergySummary;
 import com.homeiot.business.rules.RuleEvaluationResult;
 import com.homeiot.business.rules.SafetyRuleEngine;
 import com.homeiot.business.service.EnergyAnalyticsService;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,6 +18,9 @@ public class AnalyticsController {
 
     private final EnergyAnalyticsService energyAnalyticsService;
     private final SafetyRuleEngine safetyRuleEngine;
+
+    @Value("${iot.security.admin-key:iot_admin_secret_key_2026}")
+    private String expectedAdminKey;
 
     public AnalyticsController(EnergyAnalyticsService energyAnalyticsService, SafetyRuleEngine safetyRuleEngine) {
         this.energyAnalyticsService = energyAnalyticsService;
@@ -43,7 +48,12 @@ public class AnalyticsController {
     }
 
     @PostMapping("/analytics/reset")
-    public ResponseEntity<Map<String, String>> resetStats() {
+    public ResponseEntity<Map<String, String>> resetStats(
+            @RequestHeader(value = "X-Admin-Key", required = false) String adminKey) {
+        if (adminKey == null || !adminKey.equals(expectedAdminKey)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Unauthorized: X-Admin-Key header missing or invalid"));
+        }
         energyAnalyticsService.resetDailyStats();
         return ResponseEntity.ok(Map.of("message", "Statistik energi berhasil direset"));
     }

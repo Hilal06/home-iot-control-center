@@ -373,6 +373,7 @@
   .btn-action {
     background-color: var(--bg-card);
     border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
     color: var(--text-secondary);
     font-family: var(--font-mono);
     font-size: 11px;
@@ -423,6 +424,7 @@
   .filter-btn {
     background: transparent;
     border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
     color: var(--text-secondary);
     font-family: var(--font-mono);
     font-size: 10px;
@@ -436,9 +438,9 @@
   }
 
   .filter-btn.active {
-    background-color: var(--accent-amber-bg);
+    background-color: #fffbeb;
     border-color: var(--accent-amber);
-    color: var(--text-amber);
+    color: #d97706;
     font-weight: 700;
   }
 
@@ -447,7 +449,7 @@
     flex: 1;
     overflow-y: auto;
     position: relative;
-    background-color: #0b0e13;
+    background-color: var(--bg-panel);
   }
 
   .table-wrapper {
@@ -463,7 +465,7 @@
   }
 
   th {
-    background-color: #121720;
+    background-color: var(--bg-panel-header);
     color: var(--text-secondary);
     font-weight: 700;
     font-size: 10px;
@@ -477,13 +479,13 @@
 
   td {
     padding: 7px 10px;
-    border-bottom: 1px solid #19212c;
+    border-bottom: 1px solid var(--border-light);
     color: var(--text-primary);
     white-space: nowrap;
   }
 
   tbody tr:hover {
-    background-color: #161d28;
+    background-color: var(--bg-hover);
   }
 
   /* Column Accents */
@@ -508,16 +510,17 @@
     padding: 1px 5px;
     font-size: 10px;
     font-weight: 700;
+    border-radius: var(--radius-sm);
   }
 
   .bat-ok {
-    background-color: rgba(132, 204, 22, 0.15);
-    color: var(--battery-lime-text);
+    background-color: var(--status-active-bg);
+    color: var(--status-active-text);
   }
 
   .bat-low {
-    background-color: rgba(239, 68, 68, 0.2);
-    color: #fca5a5;
+    background-color: var(--status-alert-bg);
+    color: var(--status-alert-text);
   }
 
   .col-action {
@@ -558,6 +561,7 @@
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.03em;
+    border-radius: var(--radius-sm);
   }
 
   .badge-ok {
@@ -579,7 +583,7 @@
   }
 
   .text-alert {
-    color: #f87171;
+    color: #dc2626;
     font-weight: 700;
   }
 

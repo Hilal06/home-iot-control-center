@@ -33,19 +33,19 @@
 <div class="panel">
   <div class="panel-header">
     <div class="header-info">
-      <h2>[LIHAT INDIKATOR & SENSOR: {device.name || device.id}]</h2>
-      <span class="device-sub">ID: {device.id} | IP: {device.ip_address || telemetry.esp_ip || '192.168.100.76'}</span>
+      <h2>INDIKATOR & SENSOR: {device.name || device.id}</h2>
+      <span class="device-sub">ID: {device.id} &bull; IP: {device.ip_address || telemetry.esp_ip || '192.168.100.76'}</span>
     </div>
 
     <div class="header-status">
       <span class="badge {device.status === 'ONLINE' ? 'active' : 'inactive'}">
-        [STATUS: {device.status || 'ONLINE'}]
+        STATUS: {device.status || 'ONLINE'}
       </span>
       <span class="badge {device.is_locked ? 'warning' : 'inactive'}">
-        {device.is_locked ? '[DEVICE: LOCKED]' : '[DEVICE: UNLOCKED]'}
+        {device.is_locked ? 'LOCKED' : 'UNLOCKED'}
       </span>
       {#if device.is_locked && device.allow_automation_when_locked !== false}
-        <span class="badge active">[SMART BYPASS: ACTIVE]</span>
+        <span class="badge active">SMART BYPASS</span>
       {/if}
     </div>
   </div>
@@ -55,7 +55,7 @@
     <div class="ind-card">
       <div class="ind-card-header">
         <span class="card-title">1. HARDWARE & NETWORK DIAGNOSTICS</span>
-        <span class="badge {rssiInfo.badge}">[{rssiInfo.text}]</span>
+        <span class="badge {rssiInfo.badge}">{rssiInfo.text}</span>
       </div>
       <div class="ind-card-body">
         <div class="data-row">
@@ -93,7 +93,7 @@
       <div class="ind-card">
         <div class="ind-card-header">
           <span class="card-title">2. GAS & HAZARD SENSOR INDICATORS</span>
-          <span class="badge active">[MQ-SENSOR: NORMAL]</span>
+          <span class="badge active">MQ-SENSOR: NORMAL</span>
         </div>
         <div class="ind-card-body">
           <div class="data-row highlight">
@@ -106,25 +106,25 @@
 
           <div class="data-row">
             <span class="lbl">Gas Cutoff Solenoid Valve:</span>
-            <span class="val"><span class="badge active">[VALVE OPEN / SUPPLY ON]</span></span>
+            <span class="val"><span class="badge active">VALVE OPEN / SUPPLY ON</span></span>
           </div>
 
           <div class="data-row">
             <span class="lbl">Audible Siren Alarm:</span>
-            <span class="val"><span class="badge inactive">[STANDBY / SILENT]</span></span>
+            <span class="val"><span class="badge inactive">STANDBY / SILENT</span></span>
           </div>
 
           <div class="data-row">
             <span class="lbl">Automated Mitigation Rule:</span>
             <span class="val" style="color: #4ade80; font-size: 10px;">
-              [ON GAS LEAK &gt; 400 PPM: AUTO ALARM + CUTOFF VALVE]
+              ON GAS LEAK &gt; 400 PPM: AUTO ALARM + CUTOFF VALVE
             </span>
           </div>
 
           <div class="data-row">
             <span class="lbl">Smart Lock Rule:</span>
             <span class="val" style="color: #fde047; font-size: 10px;">
-              [Emergency sensor triggers bypass manual lock]
+              Emergency sensor triggers bypass manual lock
             </span>
           </div>
         </div>
@@ -136,7 +136,7 @@
       <div class="ind-card">
         <div class="ind-card-header">
           <span class="card-title">2. WATER RESERVOIR & PUMP TELEMETRY</span>
-          <span class="badge active">[RESERVOIR: 82%]</span>
+          <span class="badge active">RESERVOIR: 82%</span>
         </div>
         <div class="ind-card-body">
           <div class="data-row highlight">
@@ -154,18 +154,18 @@
 
           <div class="data-row">
             <span class="lbl">Main Water Pump Relay:</span>
-            <span class="val"><span class="badge active">[PUMP RUNNING]</span></span>
+            <span class="val"><span class="badge active">PUMP RUNNING</span></span>
           </div>
 
           <div class="data-row">
             <span class="lbl">Secondary Overflow / Divert Valve:</span>
-            <span class="val"><span class="badge inactive">[STANDBY (TRIGGERS AT 100%)]</span></span>
+            <span class="val"><span class="badge inactive">STANDBY (TRIGGERS AT 100%)</span></span>
           </div>
 
           <div class="data-row">
             <span class="lbl">Automated Smart Flow Routing:</span>
             <span class="val" style="color: #38bdf8; font-size: 10px;">
-              [ON TANK 100%: DIVERT FLOW TO GARDEN IRRIGATION VALVE]
+              ON TANK 100%: DIVERT FLOW TO GARDEN IRRIGATION VALVE
             </span>
           </div>
         </div>
@@ -178,7 +178,7 @@
         <div class="ind-card-header">
           <span class="card-title">2. POWER & ELECTRICAL GRID TELEMETRY</span>
           <span class="badge {telemetry.solar_charger_active ? 'active' : 'inactive'}">
-            {telemetry.solar_charger_active ? '[MPPT: ACTIVE]' : '[MPPT: OFF]'}
+            {telemetry.solar_charger_active ? 'MPPT: ACTIVE' : 'MPPT: OFF'}
           </span>
         </div>
         <div class="ind-card-body">
@@ -349,7 +349,8 @@
 
   .ind-card {
     background-color: var(--bg-card);
-    border: 1px solid var(--border-light);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
     display: flex;
     flex-direction: column;
   }
@@ -359,7 +360,7 @@
     justify-content: space-between;
     align-items: center;
     background-color: var(--bg-panel-header);
-    border-bottom: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border-medium);
     padding: 6px 10px;
   }
 
@@ -385,12 +386,13 @@
     justify-content: space-between;
     align-items: center;
     padding: 4px 0;
-    border-bottom: 1px solid #1f1f1f;
+    border-bottom: 1px solid var(--border-light);
   }
 
   .data-row.highlight {
-    background-color: #1a1a1a;
+    background-color: var(--bg-hover);
     padding: 5px 6px;
+    border-radius: var(--radius-sm);
   }
 
   .lbl {
@@ -402,19 +404,21 @@
   }
 
   .solar-green {
-    color: #4ade80;
+    color: #15803d;
   }
 
   .meter-bar-container {
     width: 100%;
     height: 4px;
-    background-color: #222;
+    background-color: var(--bg-hover);
     margin-bottom: 4px;
+    border-radius: var(--radius-sm);
   }
 
   .meter-bar {
     height: 100%;
-    background-color: #4ade80;
+    background-color: #10b981;
+    border-radius: var(--radius-sm);
   }
 
   .actuator-status-grid {
@@ -425,8 +429,9 @@
   }
 
   .status-cell {
-    background-color: #121212;
-    border: 1px solid var(--border-light);
+    background-color: var(--bg-hover);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
     padding: 6px 8px;
     display: flex;
     flex-direction: column;
@@ -460,24 +465,26 @@
     gap: 6px;
     padding: 3px 6px;
     font-size: 10px;
-    border: 1px solid var(--border-light);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
     text-transform: capitalize;
   }
 
   .pill-on {
-    background-color: #14532d;
-    color: #4ade80;
-    border-color: #16a34a;
+    background-color: #dcfce7;
+    color: #15803d;
+    border-color: #86efac;
   }
 
   .pill-off {
-    background-color: #161616;
-    color: #777;
+    background-color: var(--bg-hover);
+    color: var(--text-muted);
   }
 
   .pill-dot {
     width: 6px;
     height: 6px;
+    border-radius: var(--radius-sm);
     background-color: currentColor;
   }
 </style>

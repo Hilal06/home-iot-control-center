@@ -8,7 +8,6 @@ services:
     restart: unless-stopped
     ports:
       - "1883:1883"
-      - "9001:9001"
     volumes:
       - ./Service_Backend/mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquitto_data:/mosquitto/data
@@ -23,12 +22,13 @@ services:
     image: redis:7-alpine
     container_name: iot_redis
     restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-iot_redis_secure_pass_2026}"]
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-iot_redis_secure_pass_2026}", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -84,7 +84,8 @@ services:
       - MQTT_CLIENT_ID=home_iot_backend
       - MQTT_TELEMETRY_TOPIC=home/sensors/telemetry
       - MQTT_COMMAND_TOPIC=home/actuators/control
-      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-iot_redis_secure_pass_2026}@redis:6379
+      - IOT_ADMIN_KEY=${IOT_ADMIN_KEY:-iot_admin_secret_key_2026}
       - RUST_LOG=home_iot_backend=info,tower_http=debug
     ports:
       - "${EDGE_PORT:-8080}:8080"
@@ -110,6 +111,8 @@ services:
       - SERVER_PORT=8081
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-iot_redis_secure_pass_2026}
+      - IOT_ADMIN_KEY=${IOT_ADMIN_KEY:-iot_admin_secret_key_2026}
       - DATABASE_URL=jdbc:postgresql://timescaledb:5432/${POSTGRES_DB:-home_iot_db}
       - DATABASE_USER=${POSTGRES_USER:-iot_admin}
       - DATABASE_PASSWORD=${POSTGRES_PASSWORD:-iot_secret_password}

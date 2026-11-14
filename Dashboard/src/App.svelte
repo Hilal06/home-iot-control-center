@@ -11,33 +11,31 @@
 
   import Sidebar from './lib/components/Sidebar.svelte';
   import TopGlanceBar from './lib/components/TopGlanceBar.svelte';
-  import PowerSection from './lib/components/PowerSection.svelte';
-  import LampsMatrix from './lib/components/LampsMatrix.svelte';
-  import ActuatorsSection from './lib/components/ActuatorsSection.svelte';
-  import EnvironmentSection from './lib/components/EnvironmentSection.svelte';
+  import HomeView from './lib/components/HomeView.svelte';
+  import StatsView from './lib/components/StatsView.svelte';
   import ConsolesView from './lib/components/ConsolesView.svelte';
   import DeviceSettings from './lib/components/DeviceSettings.svelte';
-  import TelemetryLineChart from './lib/components/TelemetryLineChart.svelte';
-  import OtherSensorsSection from './lib/components/OtherSensorsSection.svelte';
-  import SceneControlBar from './lib/components/SceneControlBar.svelte';
 
   function getViewFromHash() {
     const hash = window.location.hash;
-    if (hash.startsWith('#settings') || hash.startsWith('#devices')) return 'settings';
+    if (hash.startsWith('#stats') || hash.startsWith('#monitor')) return 'stats';
+    if (hash.startsWith('#settings') || hash.startsWith('#devices')) return 'devices';
     if (hash.startsWith('#consoles') || hash.startsWith('#logs')) return 'consoles';
-    return 'monitor';
+    return 'home';
   }
 
-  let currentView = $state(getViewFromHash()); // 'monitor' | 'settings' | 'consoles'
+  let currentView = $state(getViewFromHash()); // 'home' | 'stats' | 'devices' | 'consoles'
 
   function changeView(newView) {
     currentView = newView;
-    if (newView === 'settings' || newView === 'devices') {
+    if (newView === 'devices' || newView === 'settings') {
       window.location.hash = '#devices';
     } else if (newView === 'consoles') {
       window.location.hash = '#consoles';
+    } else if (newView === 'stats') {
+      window.location.hash = '#stats';
     } else {
-      window.location.hash = '#monitor';
+      window.location.hash = '#home';
     }
   }
   let wsStatus = $state('CONNECTING');
@@ -163,7 +161,9 @@
           telemetry.lamps = { ...telemetry.lamps, [cmd.room]: cmd.state };
         }
       } else if (cmd.command === 'set_garage') {
-        telemetry.garage_status = typeof cmd.state === 'string' ? cmd.state === 'open' : !!cmd.state;
+        const isOpen = typeof cmd.state === 'string' ? cmd.state === 'open' : !!cmd.state;
+        telemetry.garage_status = isOpen;
+        telemetry.garage_open = isOpen;
       } else if (cmd.command === 'set_hvac') {
         telemetry.hvac_power = cmd.power;
         telemetry.hvac_target_temp = cmd.target_temp;
@@ -352,37 +352,27 @@
 
     <!-- Scrollable Content Area -->
     <main class="content-scroll">
-      {#if currentView === 'monitor'}
-        <!-- VIEW 01: DASHBOARD MONITOR (SIMPEL, INFORMATIF, BEBAS BUZZWORD) -->
-
-        <!-- Operational Scene Bar (NORMAL / AWAY / SLEEP) -->
-        <SceneControlBar onSceneChange={handleSceneChange} />
-
-        <!-- Section 1: Real-time Split Telemetry Charts (Daya Listrik & Tangki Air/Suhu) -->
-        <TelemetryLineChart
+      {#if currentView === 'home'}
+        <!-- VIEW 01: HOME OVERVIEW & KONTROL PERALATAN (PRELINE IOT SMART HOME LAYOUT) -->
+        <HomeView
           {telemetry}
-          activeDeviceId={activeDevice?.id || 'esp32_master'}
+          activeDevice={activeDevice}
+          devices={storeState.devices}
           {isDeviceOnline}
+          onCommand={handleCommand}
+          onToggleLock={handleToggleLock}
+          onSceneChange={handleSceneChange}
         />
 
-        <!-- Section 2: Kontrol Lampu Rumah (11 Ruangan) -->
-        <LampsMatrix lamps={telemetry.lamps || {}} onCommand={handleCommand} />
-
-        <!-- Section 3: Daya & Kelistrikan Rumah (PLN 900W, Solar 2400W, Baterai 4.8kWh) -->
-        <PowerSection {telemetry} onCommand={handleCommand} />
-
-        <!-- Section 4: Peralatan Rumah & Tangki/Gas (Row 2 Kolom) -->
-        <div class="row-2col">
-          <ActuatorsSection {telemetry} onCommand={handleCommand} />
-          <OtherSensorsSection
-            {telemetry}
-            devices={storeState.devices}
-            onCommand={handleCommand}
-          />
-        </div>
-
-        <!-- Section 5: Lingkungan & Jaringan -->
-        <EnvironmentSection {telemetry} {isDeviceOnline} device={activeDevice} />
+      {:else if currentView === 'stats'}
+        <!-- VIEW 02: TELEMETRI & ANALISIS MENDALAM (uPLOT, HISTORIS, POWER & SENSOR) -->
+        <StatsView
+          {telemetry}
+          activeDevice={activeDevice}
+          devices={storeState.devices}
+          {isDeviceOnline}
+          onCommand={handleCommand}
+        />
 
       {:else if currentView === 'settings' || currentView === 'devices'}
         <!-- VIEW 02: PENGATURAN & MANAJEMEN DEVICES -->
@@ -439,12 +429,6 @@
     gap: 16px;
   }
 
-  .row-2col {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
-    gap: 16px;
-  }
-
   @media (max-width: 768px) {
     .app-layout {
       flex-direction: column;
@@ -452,9 +436,6 @@
     .content-scroll {
       padding: 8px;
       gap: 10px;
-    }
-    .row-2col {
-      grid-template-columns: 1fr;
     }
   }
 </style>

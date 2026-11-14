@@ -144,13 +144,14 @@
     align-items: center;
     background-color: var(--bg-card);
     border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
     padding: 10px 14px;
     font-family: var(--font-mono);
   }
 
   .lamp-card.is-on {
-    border-color: rgba(16, 185, 129, 0.45);
-    background-color: rgba(16, 185, 129, 0.08);
+    border-color: #10b981;
+    background-color: #f0fdf4;
   }
 
   .lamp-card.is-off {
@@ -194,5 +195,6 @@
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.04em;
+    border-radius: var(--radius-sm);
   }
 </style>

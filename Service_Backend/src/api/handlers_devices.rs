@@ -79,8 +79,11 @@ pub async fn create_device_handler(
     Json(req): Json<CreateDeviceRequest>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, String)> {
     let clean_id = req.id.trim().to_lowercase().replace(' ', "_");
-    if clean_id.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Device ID cannot be empty".into()));
+    if clean_id.is_empty() || !clean_id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-') {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Device ID must contain only lowercase alphanumeric characters, underscores, and dashes (no slashes or wildcards)".into(),
+        ));
     }
 
     if get_device_by_id(&state.db, &clean_id).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?.is_some() {
